@@ -1,11 +1,11 @@
 package EXP;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Vector;
-import java.util.LinkedHashSet;
+import java.util.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
+import com.sun.org.apache.xpath.internal.operations.String;
 import util.FileWriter;
 
 
@@ -32,7 +32,7 @@ public class Analysis {
                 distinct().
                 forEach(fw::write);
         */
-        model_compete_Map.entrySet().forEach(x -> fw.write( x.getKey()+"\t"+x.getValue()+"\n"));
+        model_compete_Map.entrySet().forEach(x -> fw.write( x.getKey()+"\t"+x.getValue()+"\t"+x.getValue().split("\\) \\(").length+"\n"));
         fw.close();
     }
 
@@ -48,13 +48,15 @@ public class Analysis {
         FileWriter fw1 =  new FileWriter("Data/Analysis_model_shadow_greater_than_one.txt", "GBK", false,true);
         for(Map.Entry<String,LinkedHashSet<String[]>> x:model_shadow_Map.entrySet()){
             StringBuilder sb =new StringBuilder();
-            long classCount=x.getValue().stream().map(strings -> strings[1]).distinct().count();
+            List<String> classList= x.getValue().stream().map(strings -> strings[1]).distinct().collect(Collectors.toList());
+            long classCount=classList.size();
             sb.append(x.getKey()+"\t");
             x.getValue().forEach(strings -> sb.append("["+strings[0]+"@"+strings[1]+"] "));
-            String w= sb.substring(0,sb.length()-1)+"\tkind:"+classCount+"\n";
-            fw.write(w);
+            sb.deleteCharAt(sb.length()-1);
+            sb.append("\t"+classCount+"\n");
+            fw.write(sb.toString());
             if (classCount > 1)
-                fw1.write(w);
+                fw1.write(sb.toString());
         }
         fw.close();
         fw1.close();

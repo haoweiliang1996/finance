@@ -605,7 +605,7 @@ public class EXP {
         loadPattern("Data/问题类别模式.txt");
         treeCount = new myTreeKount("Data/问题类别模式.txt");
         NoPattern = keyList.get(keyList.size() - 1).trim();
-        processCluster("Data/prase.in", "Data/prase_out.txt");
+        processCluster("Data/prase_50w.in", "Data/prase_out.txt");
 
         File fileOut = new File("Data/贷款人所在行业.txt");
         fileOut.createNewFile();
