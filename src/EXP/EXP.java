@@ -542,6 +542,9 @@ public class EXP {
                     if (classList[j].equals(cmp))
                         break;
                 }
+                //debug
+                if (! cmp.equals(classList[j]))
+                    System.out.println("debug" + cmp + "\t"+classList[j]);
                 if (!Analysis.model_shadow_Map.containsKey(patternList[j]))
                     Analysis.model_shadow_Map.put(patternList[j], new LinkedHashSet<String[]>());
                 Analysis.model_shadow_Map.get(patternList[j]).add(new String[]{line, classList[j]});
@@ -605,7 +608,7 @@ public class EXP {
         loadPattern("Data/问题类别模式.txt");
         treeCount = new myTreeKount("Data/问题类别模式.txt");
         NoPattern = keyList.get(keyList.size() - 1).trim();
-        processCluster("Data/prase_50w.in", "Data/prase_out.txt");
+        processCluster("Data/prase_600w.in", "Data/prase_out.txt");
 
         File fileOut = new File("Data/贷款人所在行业.txt");
         fileOut.createNewFile();

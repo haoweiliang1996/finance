@@ -5,7 +5,6 @@ import java.util.*;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
-import com.sun.org.apache.xpath.internal.operations.String;
 import util.FileWriter;
 
 
@@ -53,7 +52,7 @@ public class Analysis {
             sb.append(x.getKey()+"\t");
             x.getValue().forEach(strings -> sb.append("["+strings[0]+"@"+strings[1]+"] "));
             sb.deleteCharAt(sb.length()-1);
-            sb.append("\t"+classCount+"\n");
+            sb.append("\t"+classCount+"\t"+classList.toString()+"\n");
             fw.write(sb.toString());
             if (classCount > 1)
                 fw1.write(sb.toString());
