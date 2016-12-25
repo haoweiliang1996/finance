@@ -25,13 +25,11 @@ public class Pick {
     }
 
     private void loadPattern() throws IOException {
-        InputStreamReader ir = new InputStreamReader(new FileInputStream(patternFilename), "GBK");
-        BufferedReader br = new BufferedReader(ir);
+        BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(patternFilename), "GBK"));
         patternList = br.
                 lines().
                 map(line -> line.replaceAll("\\.\\*", "(?<keySentence>.*)")).
                 collect(Collectors.toList());
-        ir.close();
         br.close();
         System.out.print("debug" + patternList.toString());
     }
@@ -59,8 +57,7 @@ public class Pick {
     }
 
     private void processInput(String fileName, String outFileName) throws IOException {
-        InputStreamReader ir = new InputStreamReader(new FileInputStream(fileName), "GBK");
-        BufferedReader br = new BufferedReader(ir);
+        BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(fileName), "GBK"));
         FileWriter fw = new FileWriter(outFileName, "GBK", false, true);
         br.lines().
                 map(x -> x + "\t" + type(x)).
