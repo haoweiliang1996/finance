@@ -28,7 +28,7 @@ public class Pick {
         BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(patternFilename), "GBK"));
         patternList = br.
                 lines().
-                map(line -> line.replaceAll("\\.\\*", "(?<keySentence>.*)")).
+                map(line -> line.replaceAll("\\.\\*", "(?<keySentence>.*?)")).
                 collect(Collectors.toList());
         br.close();
         System.out.print("debug" + patternList.toString());
@@ -38,8 +38,11 @@ public class Pick {
         Matcher pa = Pattern.compile(regex).matcher(line);
         if (!pa.find())
             return "";
-        if (pa.group("keySentence").length() == 0)
-            return pa.group(0);
+        if (pa.group("keySentence").length() == 0){
+            StringBuilder sb = new StringBuilder(pa.group(0));
+            sb.insert(pa.start("keySentence")-pa.start(0),"\t\t");
+            return sb.toString();
+        }
         System.out.println("debug: " + pa.group(0));
         return Pattern.compile(pa.group("keySentence"), Pattern.LITERAL).matcher(pa.group(0)).replaceAll("\t" + pa.group("keySentence") + "\t");
     }
