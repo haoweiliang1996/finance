@@ -28,11 +28,11 @@ public class Pick {
     }
 
     private void loadPattern() throws IOException {
-        patternList = new ArrayList<List<String>>();
+        patternList = new ArrayList<>();
         BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(patternFilename), "GBK"));
         List<String> lines = br.lines().collect(Collectors.toList());
         for (int i = 0; i < lines.size() / 3; i++) {
-            List<String> regexes = new ArrayList<String>();
+            List<String> regexes = new ArrayList<>();
             String line1, line2, line3;
             line1 = lines.get(3 * i);
             line2 = lines.get(3 * i + 1);
@@ -69,11 +69,11 @@ public class Pick {
         System.out.println("debug: " + pa.group(0));
         return Pattern.compile(pa.group("keySentence"), Pattern.LITERAL).
                 matcher(pa.group(0)).
-                replaceAll(" " + pa.group("keySentence") + divideCharacter);
+                replaceAll(divideCharacter + pa.group("keySentence") + divideCharacter);
     }
 
     private String type(String line) {
-        String result = patternList.
+        return patternList.
                 stream().
                 map(regexes -> regexes.stream().map(regex -> isKeyType(regex, line)).
                         filter(strings -> strings.length() != 0).
@@ -81,13 +81,10 @@ public class Pick {
                 map(string -> string.split(" ")).
                 map(stringList -> expandMap.containsKey(stringList[0]) ?
                         stringList[0].substring(0, stringList[0].length() - expandMap.get(stringList[0])) + divideCharacter
-                                + stringList[0].substring(stringList[0].length()-expandMap.get(stringList[0]))
-                                + String.join(divideCharacter,Arrays.asList(stringList).subList(1,stringList.length))
+                                + stringList[0].substring(stringList[0].length() - expandMap.get(stringList[0]))
+                                + String.join(divideCharacter, Arrays.asList(stringList).subList(1, stringList.length))
                         : String.join(divideCharacter, Arrays.asList(stringList))).
-                reduce("", (a, b) -> a + "\t" + b);
-        if (result.length() > 0)
-            result = result.substring(1);
-        return result;
+                reduce((a, b) -> a + "\t" + b).orElse("Bug report");
     }
 
     private void processInput() throws IOException {
