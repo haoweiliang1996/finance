@@ -45,10 +45,9 @@ public class Pick {
             line3 = lines.get(3 * i + 2);
             for (String left : line1.split("\t"))
                 for (String right : line2.split("\t"))
-                    regexes.add("(" + left + ")" + ".*" + "(" + right + ")");
+                    regexes.add("(" + left + ")" + "(?<keySentence>[^£¬¡£,]*?)" + "(" + right + ")");
             Arrays.stream(line3.split("\t")).filter(string -> string.length() != 0).forEach(regex -> regexes.add(regex));
-            patternList.add(regexes.stream().map(regex -> regex.replaceAll("\\.\\*", "(?<keySentence>.*?)")).
-                    collect(Collectors.toList()));
+            patternList.add(regexes);
         }
         br.close();
         patternList.forEach(regexs -> regexs.forEach(System.out::println));
@@ -84,7 +83,9 @@ public class Pick {
         if (!pa.find())
             return "";
         //System.out.println("debug: " + line + "\n\t" + pa.group(0));
-        return praseMatchResult(pa.group(1), pa.group(2), pa.group(3));
+        return praseMatchResult(line.substring(pa.start(),pa.start("keySentence"))
+                , pa.group("keySentence")
+                , line.substring(pa.end("keySentence"),pa.end()));
     }
 
     private String type(String line) {
