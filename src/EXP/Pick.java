@@ -1,5 +1,8 @@
 package EXP;
 
+import io.netty.util.internal.MessagePassingQueue;
+import io.netty.util.internal.chmv8.ConcurrentHashMapV8;
+import org.codehaus.groovy.util.HashCodeHelper;
 import util.FileWriter;
 
 import java.io.BufferedReader;
@@ -7,6 +10,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -18,7 +23,8 @@ public class Pick {
     private List<List<String>> patternList;
     private String patternFilename, inputFilename, outputFilename, expanFilename;
     private HashMap<String, Integer> expandMap;
-    private final String divideCharacter = " ";
+    private final String divideCharacter = "@";
+    private HashMap<String, String> resultCache = new HashMap<>();
 
     private Pick(String patternFilename, String inputFilename, String outputFilename, String expanFilename) {
         this.patternFilename = patternFilename;
@@ -53,38 +59,47 @@ public class Pick {
         BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(expanFilename), "GBK"));
         br.lines().
                 map(line -> line.split("\t")).
-                forEach(line -> expandMap.put(line[0], Integer.parseInt(line[1])));
+                forEach(line -> expandMap.put(line[0], Integer.parseInt(line[1])>0 ? Integer.parseInt(line[1])+1:Integer.parseInt(line[1])));
         System.out.println(expandMap);
+    }
+
+    private String praseMatchResult(String p1, String p2, String p3) {
+        StringBuilder result = new StringBuilder();
+        Function<String, Integer> getDivideIndex = p -> (p.length() - expandMap.get(p) + 1) % (p.length() + 1);
+        Consumer<String> putGroup = p -> result.append(p.substring(0, getDivideIndex.apply(p)) + divideCharacter + p.substring(getDivideIndex.apply(p)));
+        if (expandMap.containsKey(p1))
+            putGroup.accept(p1);
+        else
+            result.append(p1 + divideCharacter);
+        result.append(p2);
+        if (expandMap.containsKey(p3))
+            putGroup.accept(p3);
+        else
+            result.append(divideCharacter + p3);
+        return result.toString();
     }
 
     private String isKeyType(String regex, String line) {
         Matcher pa = Pattern.compile(regex).matcher(line);
         if (!pa.find())
             return "";
-        if (pa.group("keySentence").length() == 0) {
-            StringBuilder sb = new StringBuilder(pa.group(0));
-            sb.insert(pa.start("keySentence") - pa.start(0), divideCharacter + divideCharacter);
-            return sb.toString();
-        }
-        System.out.println("debug: " + pa.group(0));
-        return Pattern.compile(pa.group("keySentence"), Pattern.LITERAL).
-                matcher(pa.group(0)).
-                replaceAll(divideCharacter + pa.group("keySentence") + divideCharacter);
+        //System.out.println("debug: " + line + "\n\t" + pa.group(0));
+        return praseMatchResult(pa.group(1), pa.group(2), pa.group(3));
     }
 
     private String type(String line) {
-        return patternList.
-                stream().
-                map(regexes -> regexes.stream().map(regex -> isKeyType(regex, line)).
-                        filter(strings -> strings.length() != 0).
-                        findFirst().orElse("")).
-                map(string -> string.split(" ")).
-                map(stringList -> expandMap.containsKey(stringList[0]) ?
-                        stringList[0].substring(0, stringList[0].length() - expandMap.get(stringList[0])) + divideCharacter
-                                + stringList[0].substring(stringList[0].length() - expandMap.get(stringList[0]))
-                                + String.join(divideCharacter, Arrays.asList(stringList).subList(1, stringList.length))
-                        : String.join(divideCharacter, Arrays.asList(stringList))).
-                reduce((a, b) -> a + "\t" + b).orElse("Bug report");
+        if (resultCache.containsKey(line))
+            return resultCache.get(line);
+        else {
+            String result = patternList.
+                    stream().
+                    map(regexes -> regexes.stream().map(regex -> isKeyType(regex, line)).
+                            filter(strings -> strings.length() != 0).
+                            findFirst().orElse("")).
+                    reduce((a, b) -> a + "\t" + b).orElse("Bug report");
+            resultCache.put(line,result);
+            return result;
+        }
     }
 
     private void processInput() throws IOException {
