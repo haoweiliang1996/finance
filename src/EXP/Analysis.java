@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import util.FileWriter;
 
@@ -59,6 +61,17 @@ public class Analysis {
         }
         fw.close();
         fw1.close();
+    }
+
+    public static void Analysis_model_shadow_all(HashMap<String,String> patternMap) throws  IOException{
+        String [] keys=patternMap.keySet().toArray(new String[patternMap.size()]);
+        List<List<String>> valuesList = Stream.of(keys).map(str -> Arrays.asList(patternMap.get(str).split("@"))).collect(Collectors.toList());
+        Map<String,String> modelToClass = new HashMap<>();
+        valuesList.forEach(l -> l.forEach(s -> modelToClass.put(s,"")));
+        IntStream.range(0,keys.length)
+                .forEach(i -> valuesList.get(i)
+                        .forEach(str -> modelToClass.put(str,modelToClass.get(str)+"\t"+keys[i])));
+        modelToClass.entrySet().stream().filter(x -> x.getValue().trim().split("\t").length>1).forEach(es -> System.out.println(es.getKey()+"\t"+es.getValue()));
     }
 
 }

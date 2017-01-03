@@ -273,7 +273,7 @@ public class EXP {
             System.out.println("debug start process");
             while ((line = br.readLine()) != null) {
                 line_count++;
-                if (line_count % 100000 == 0)
+                if (line_count % 1000 == 0)
                     System.out.println("处理到了：" + line_count);
                 //调换位置
                 if (line.startsWith("Cluster")) {
@@ -345,33 +345,35 @@ public class EXP {
                                     count3.put(str, 1);
                             }
                         }
-                        //>>统计行也
+                        //>>统计行业
 
                         resultTemp += result + "\t";//贷款人所在行业<tab>贷款流向行业
                     }
                     resultTemp = resultTemp.trim();
 
                     //<<get tree
-                    StringBuilder strTemp = new StringBuilder();
-                    if (resultTemp.length() > 0) {
-                        for (String str : resultTemp.split("\t")) {
-                            String[] strArray = str.split("\\|");
-                            for (String al : strArray)
-                                strTemp.append(tree.getAllParentsAndItself(al).toString() + "|");
-                            if (strTemp.length() > 0)
-                                strTemp.deleteCharAt(strTemp.length() - 1);
-                            strTemp.append('\t');
+                    boolean ifGetTree = false;
+                    if (ifGetTree) {
+                        StringBuilder strTemp = new StringBuilder();
+                        if (resultTemp.length() > 0) {
+                            for (String str : resultTemp.split("\t")) {
+                                String[] strArray = str.split("\\|");
+                                for (String al : strArray)
+                                    strTemp.append(tree.getAllParentsAndItself(al).toString() + "|");
+                                if (strTemp.length() > 0)
+                                    strTemp.deleteCharAt(strTemp.length() - 1);
+                                strTemp.append('\t');
+                            }
                         }
+                        if (strTemp.length() > 0)
+                            rList.add(line + '\t' + strTemp.substring(0, strTemp.length() - 1));
+                        else
+                            rList.add(line);
                     }
-                    if (strTemp.length() > 0)
-                        rList.add(line + '\t' + strTemp.substring(0, strTemp.length() - 1));
                     else
-                        rList.add(line);
-                    continue;
+                        rList.add(line + '\t' + resultTemp);
                     //get tree>>
                 }
-                if (line.isEmpty())
-                    continue;
             }
 
             //将处理结果按指定格式写入文件
@@ -608,7 +610,7 @@ public class EXP {
         loadPattern("Data/问题类别模式.txt");
         treeCount = new myTreeKount("Data/问题类别模式.txt");
         NoPattern = keyList.get(keyList.size() - 1).trim();
-        processCluster("Data/prase_600w.in", "Data/prase_out.txt");
+        processCluster("Data/EXP_debug.txt", "Data/prase_out.txt");
 
         File fileOut = new File("Data/贷款人所在行业.txt");
         fileOut.createNewFile();
@@ -637,6 +639,7 @@ public class EXP {
 
         Analysis.Anylysis_model_compete();
         Analysis.Analysis_model_shadow();
+        Analysis.Analysis_model_shadow_all(patternMap);
     }
 }
 

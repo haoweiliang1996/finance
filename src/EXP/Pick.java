@@ -1,8 +1,5 @@
 package EXP;
 
-import io.netty.util.internal.MessagePassingQueue;
-import io.netty.util.internal.chmv8.ConcurrentHashMapV8;
-import org.codehaus.groovy.util.HashCodeHelper;
 import util.FileWriter;
 
 import java.io.BufferedReader;
@@ -23,7 +20,7 @@ public class Pick {
     private List<List<String>> patternList;
     private String patternFilename, inputFilename, outputFilename, expanFilename;
     private HashMap<String, Integer> expandMap;
-    private final String divideCharacter = "@";
+    private final String divideCharacter = "";
     private HashMap<String, String> resultCache = new HashMap<>();
 
     private Pick(String patternFilename, String inputFilename, String outputFilename, String expanFilename) {
@@ -107,7 +104,7 @@ public class Pick {
         BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(inputFilename), "GBK"));
         FileWriter fw = new FileWriter(outputFilename, "GBK", false, true);
         br.lines().
-                map(x -> x + "\t" + type(x)).
+                map(x -> "\t"+ x + "\t" + type(x)).
                 forEach(x -> fw.write(x + "\n"));
         fw.close();
         br.close();
