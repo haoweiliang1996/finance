@@ -6,6 +6,8 @@ package EXP;
 import java.io.*;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -14,6 +16,8 @@ import java.util.Map;
 
 import main.Main;
 import tree.Tree;
+import util.*;
+import util.FileWriter;
 
 public class EXP {
     public static HashMap<String, String> patternMap = new HashMap<>();
@@ -251,147 +255,79 @@ public class EXP {
      */
     public static void processCluster(String inFile, String outFile)
             throws IOException {
-        ArrayList<String> rList = new ArrayList<>();
-        File fileIn = new File(inFile);
-        File fileOut = new File(outFile);
-        fileOut.createNewFile();
-        OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(fileOut));
-        BufferedWriter bw = new BufferedWriter(osw);
+        FileWriter fw = new FileWriter(outFile, "GBK", false, true);
+        FileWriter fwC = new FileWriter(outFile.split("\\.")[0] + "_client.txt", "GBK", false, true);
+        BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(inFile), "GBK"));
 
-        File fileOutClient = new File(outFile.split("\\.")[0] + "_client" + ".txt");
-        fileOutClient.createNewFile();
-        OutputStreamWriter oswC = new OutputStreamWriter(new FileOutputStream(fileOutClient));
-        BufferedWriter bwC = new BufferedWriter(oswC);
+        System.out.println("debug start process");
 
-        if (fileIn.isFile() && fileIn.exists()) {
-            InputStreamReader read = new InputStreamReader(new FileInputStream(
-                    fileIn), "GBK");
-            BufferedReader br = new BufferedReader(read);
-            String line = null;
-            Tree tree = Main.load_tree();
+        List<String> lines = br.lines().collect(Collectors.toList());
+        br.close();
 
-            System.out.println("debug start process");
-            br.lines().parallel()
-                    .filter(str -> !str.isEmpty())
-                    .map(str -> str.split("\\t", -1))
-                    .map(strList -> Stream.of(strList[2].toUpperCase(), strList[3].toUpperCase())
-                            .map(str -> str.trim().replaceAll("\\s+", "，").replaceAll("，，", "，").replaceAll("，，，", "，").trim())
-                            .map(str -> type(str))
-                            .filter(str -> str.length() != 0)
-                            .peek(System.out::println)   //to-do 将统计写成consumer
-                            .collect(Collectors.toList()))
-                    .
-            while ((line = br.readLine()) != null) {
-                line_count++;
-                if (line_count % 1000 == 0)
-                    System.out.println("处理到了：" + line_count);
-                if (!line.isEmpty()) {
-                    String[] line_c = line.split("\\t", -1);//不忽略尾部的/t
-                    if (line_c.length < 4) {
-                        System.out.println("drop" + line);
-                        continue;
-                    }
+        Map<String, String> resultCache = new HashMap<>();
+        lines.parallelStream()
+                .filter(str -> !str.isEmpty())
+                .map(str -> str.split("\\t", -1))
+                .map(strList -> Arrays.asList(strList[2], strList[3]))
+                .flatMap(List::stream)
+                .distinct()
+                .filter(str -> str.length() != 0)
+                .forEach(str -> resultCache.put(str, type(str.toUpperCase())));
 
-                    String resultTemp = "";
-                    for (int i = 2; i < 4; i++) {
-                        String line_cs = line_c[i];
-                        if (line_cs.length() == 0)
-                            continue;
-                        line_cs = line_cs.toUpperCase();
-                        //System.out.println("debug"+line_cs);
-                        line_cs = line_cs.trim();
-                        line_cs = line_cs.replaceAll("\\s+", "，");
-                        line_cs = line_cs.replaceAll("，，", "，");
-                        line_cs = line_cs.replaceAll("，，，", "，");
-                        String result = type(line_cs).trim();
+        Tree tree = Main.load_tree();
+        Function<String, String> getParrentClass = strWithSlashT -> Stream.of(strWithSlashT.split("\t"))
+                .map(strWithPipe -> Stream.of(strWithPipe.split("\\|"))
+                        .map(singleStr -> tree.getAllParentsAndItself(singleStr).toString())
+                        .reduce((a, b) -> a + "|" + b)).toString();
+        resultCache.keySet().forEach(key -> resultCache.put(key,getParrentClass.apply(key)));
 
-                        //<<统计行业
-                        /**
-                         * 由于引入了^机制，可能连“其他”类别都没有
-                         */
-                        if (result.length() == 0) {
-                            System.out.println("debug + line_cs: " + line_cs + " result:" + result);
-                            System.out.println("因为某种情况 删除了所有找到的class");
-                            result = "待处理";
-                        }
+        Function<String, String> getResultByCache = str -> str.length() == 0 ? "" : "\t" + resultCache.get(str);
+        BiFunction<String, String, String> compareTwoResult = (first, second) ->
+                resultCache.get(second).equals("[" + NoPattern + "]") || second.equals("") ? first : second;
+        lines.stream()
+                .map(str -> str.split("\t", -1))
+                .peek(strList -> fw.write(String.join("\t", Arrays.asList(strList))
+                        + getResultByCache.apply(strList[2]) + getResultByCache.apply(strList[3])))
+                .forEach(strList -> fwC.write(String.join("\t", Arrays.asList(strList))
+                        + getResultByCache.apply(compareTwoResult.apply(strList[2], strList[3]))));
 
-                        //为了统计，需要得到class的所有父class
-                        String[] result_split = result.split("\\|");
-                        HashSet<String> keyIdSet = new HashSet<>();
-                        for (String str : result_split) {
-                            final int FLAG_ROOT = -2;
-                            for (int id = treeCount.getKeyId(str); id != FLAG_ROOT; id = treeCount.getFatherKeyId(id)) {
-                                keyIdSet.add(treeCount.getKeyById(id));
-                            }
-                        }
-                        for (String str : keyIdSet) {
-                            if (i == 2) {
-                                if (count2.containsKey(str))
-                                    count2.put(str, count2.get(str) + 1);
-                                else
-                                    count2.put(str, 1);
-                            } else if (i == 3) {
-                                if (count3.containsKey(str))
-                                    count3.put(str, count3.get(str) + 1);
-                                else
-                                    count3.put(str, 1);
-                            }
-                        }
-                        //>>统计行业
-
-                        resultTemp += result + "\t";//贷款人所在行业<tab>贷款流向行业
-                    }
-                    resultTemp = resultTemp.trim();
-
-                    //<<get tree
-                    boolean ifGetTree = false;
-                    if (ifGetTree) {
-                        StringBuilder strTemp = new StringBuilder();
-                        if (resultTemp.length() > 0) {
-                            for (String str : resultTemp.split("\t")) {
-                                String[] strArray = str.split("\\|");
-                                for (String al : strArray)
-                                    strTemp.append(tree.getAllParentsAndItself(al).toString() + "|");
-                                if (strTemp.length() > 0)
-                                    strTemp.deleteCharAt(strTemp.length() - 1);
-                                strTemp.append('\t');
-                            }
-                        }
-                        if (strTemp.length() > 0)
-                            rList.add(line + '\t' + strTemp.substring(0, strTemp.length() - 1));
-                        else
-                            rList.add(line);
-                    } else
-                        rList.add(line + '\t' + resultTemp);
-                    //get tree>>
+        String line = null;
+        while ((line = br.readLine()) != null) {
+            line_count++;
+            if (line_count % 1000 == 0)
+                System.out.println("处理到了：" + line_count);
+            if (!line.isEmpty()) {
+                String[] line_c = line.split("\\t", -1);//不忽略尾部的/t
+                if (line_c.length < 4) {
+                    System.out.println("drop" + line);
+                    continue;
                 }
-            }
 
-            //将处理结果按指定格式写入文件
-            for (String str : rList) {
-                String[] strSplit = str.split("\t", -1);
-                StringBuilder sbt = new StringBuilder();
-                String selectSecond = "[" + NoPattern + "]";
-                for (int i = 0; i < strSplit.length; i++) {
-                    if (i == 2 || i == 3)
-                        continue;
-                    if (i <= 1)
-                        sbt.append(strSplit[i] + "\t");
-                    else if (i > 3) {
-                        if (!strSplit[i].equals("[" + NoPattern + "]"))
-                            selectSecond = strSplit[i];
+
+                //<<get tree
+                boolean ifGetTree = false;
+                if (ifGetTree) {
+                    StringBuilder strTemp = new StringBuilder();
+                    if (resultTemp.length() > 0) {
+                        for (String str : resultTemp.split("\t")) {
+                            String[] strArray = str.split("\\|");
+                            for (String al : strArray)
+                                strTemp.append(tree.getAllParentsAndItself(al).toString() + "|");
+                            if (strTemp.length() > 0)
+                                strTemp.deleteCharAt(strTemp.length() - 1);
+                            strTemp.append('\t');
+                        }
                     }
-                }
-                sbt.append(selectSecond + "\t");
-                bwC.write(sbt.substring(0, sbt.length() - 1) + '\n');
-                bw.write(str + "\n");
+                    if (strTemp.length() > 0)
+                        rList.add(line + '\t' + strTemp.substring(0, strTemp.length() - 1));
+                    else
+                        rList.add(line);
+                } else
+                    rList.add(line + '\t' + resultTemp);
+                //get tree>>
             }
-            br.close();
-            bw.close();
-            bwC.close();
-        } else {
-            System.out.println("找不到指定的文件");
         }
+
     }
 
     /**
