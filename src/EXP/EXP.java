@@ -8,6 +8,8 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.Map;
 
@@ -250,7 +252,6 @@ public class EXP {
      */
     public static void processCluster(String inFile, String outFile)
             throws IOException {
-        //HashSet<String> resultSet = new HashSet<>();
         ArrayList<String> rList = new ArrayList<>();
         File fileIn = new File(inFile);
         File fileOut = new File(outFile);
@@ -271,29 +272,21 @@ public class EXP {
             Tree tree = Main.load_tree();
 
             System.out.println("debug start process");
+            br.lines().parallel()
+                    .filter(str -> !str.isEmpty())
+                    .map(str -> str.split("\\t", -1))
+                    .map(strList -> Stream.of(strList[2].toUpperCase(), strList[3].toUpperCase())
+                            .map(str -> str.trim().replaceAll("\\s+", "，").replaceAll("，，", "，").replaceAll("，，，", "，").trim())
+                            .map(str -> type(str))
+                            .filter(str -> str.length() != 0)
+                            .peek(System.out::println)   //to-do 将统计写成consumer
+                            .collect(Collectors.toList()))
+                    .
             while ((line = br.readLine()) != null) {
                 line_count++;
                 if (line_count % 1000 == 0)
                     System.out.println("处理到了：" + line_count);
-                //调换位置
-                if (line.startsWith("Cluster")) {
-                    String sline = line.trim();
-                    if (sline.indexOf("/") != -1) {
-                        sline = sline.substring(0, sline.indexOf("/") - 1).trim();
-                    }
-                    sline = sline.replaceAll("\\s+", "-");
-                    sline = sline.replaceAll("\\t+", "-");
-                    String str3 = sline.substring(0, 8);
-
-                    int idx1 = sline.lastIndexOf("-");
-                    String str1 = sline.substring(8, idx1);
-                    String str2 = sline.substring(idx1 + 1);
-
-                    str3 = str3 + str2 + "-" + str1;
-                    rList.add(str3);
-                    continue;
-                }
-                if (!line.isEmpty() && !line.startsWith("Cluster")) {
+                if (!line.isEmpty()) {
                     String[] line_c = line.split("\\t", -1);//不忽略尾部的/t
                     if (line_c.length < 4) {
                         System.out.println("drop" + line);
@@ -369,8 +362,7 @@ public class EXP {
                             rList.add(line + '\t' + strTemp.substring(0, strTemp.length() - 1));
                         else
                             rList.add(line);
-                    }
-                    else
+                    } else
                         rList.add(line + '\t' + resultTemp);
                     //get tree>>
                 }
@@ -545,8 +537,8 @@ public class EXP {
                         break;
                 }
                 //debug
-                if (! cmp.equals(classList[j]))
-                    System.out.println("debug" + cmp + "\t"+classList[j]);
+                if (!cmp.equals(classList[j]))
+                    System.out.println("debug" + cmp + "\t" + classList[j]);
                 if (!Analysis.model_shadow_Map.containsKey(patternList[j]))
                     Analysis.model_shadow_Map.put(patternList[j], new LinkedHashSet<String[]>());
                 Analysis.model_shadow_Map.get(patternList[j]).add(new String[]{line, classList[j]});
