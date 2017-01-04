@@ -275,11 +275,12 @@ public class EXP {
                 .forEach(str -> resultCache.put(str, type(str.toUpperCase())));
 
         Tree tree = Main.load_tree();
-        Function<String, String> getParrentClass = strWithSlashT -> Stream.of(strWithSlashT.split("\t"))
+        Function<String, String> getParentClass = strWithSlashT -> Stream.of(strWithSlashT.split("\t"))
                 .map(strWithPipe -> Stream.of(strWithPipe.split("\\|"))
                         .map(singleStr -> tree.getAllParentsAndItself(singleStr).toString())
-                        .reduce((a, b) -> a + "|" + b)).toString();
-        resultCache.keySet().forEach(key -> resultCache.put(key,getParrentClass.apply(key)));
+                        .reduce((a, b) -> a + "|" + b).orElse(""))
+                .reduce((a,b) -> a+ "\t" +b).orElse("");
+        resultCache.keySet().forEach(key -> resultCache.put(key,getParentClass.apply(key)));
 
         Function<String, String> getResultByCache = str -> str.length() == 0 ? "" : "\t" + resultCache.get(str);
         BiFunction<String, String, String> compareTwoResult = (first, second) ->
@@ -290,44 +291,6 @@ public class EXP {
                         + getResultByCache.apply(strList[2]) + getResultByCache.apply(strList[3])))
                 .forEach(strList -> fwC.write(String.join("\t", Arrays.asList(strList))
                         + getResultByCache.apply(compareTwoResult.apply(strList[2], strList[3]))));
-
-        String line = null;
-        while ((line = br.readLine()) != null) {
-            line_count++;
-            if (line_count % 1000 == 0)
-                System.out.println("处理到了：" + line_count);
-            if (!line.isEmpty()) {
-                String[] line_c = line.split("\\t", -1);//不忽略尾部的/t
-                if (line_c.length < 4) {
-                    System.out.println("drop" + line);
-                    continue;
-                }
-
-
-                //<<get tree
-                boolean ifGetTree = false;
-                if (ifGetTree) {
-                    StringBuilder strTemp = new StringBuilder();
-                    if (resultTemp.length() > 0) {
-                        for (String str : resultTemp.split("\t")) {
-                            String[] strArray = str.split("\\|");
-                            for (String al : strArray)
-                                strTemp.append(tree.getAllParentsAndItself(al).toString() + "|");
-                            if (strTemp.length() > 0)
-                                strTemp.deleteCharAt(strTemp.length() - 1);
-                            strTemp.append('\t');
-                        }
-                    }
-                    if (strTemp.length() > 0)
-                        rList.add(line + '\t' + strTemp.substring(0, strTemp.length() - 1));
-                    else
-                        rList.add(line);
-                } else
-                    rList.add(line + '\t' + resultTemp);
-                //get tree>>
-            }
-        }
-
     }
 
     /**
