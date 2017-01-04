@@ -26,13 +26,6 @@ public class Analysis {
      */
     public static void Anylysis_model_compete() throws IOException {
         FileWriter fw = new FileWriter("Data/Analysis_model_compete.txt", "GBK", false, true);
-        /*Stream.of(resultList).
-                map(line -> line.split("\t", -1)).
-                map(strs -> Arrays.asList(strs[2] + "\t" + strs[4], strs[3] + "\t" + strs[5])).
-                flatMap(List::stream).
-                distinct().
-                forEach(fw::write);
-        */
         model_compete_Map.entrySet().forEach(x -> fw.write(x.getKey() + "\t" + x.getValue() + "\t" + x.getValue().split("\\) \\(").length + "\n"));
         fw.close();
     }
@@ -63,15 +56,15 @@ public class Analysis {
         fw1.close();
     }
 
-    public static void Analysis_model_shadow_all(HashMap<String,String> patternMap) throws  IOException{
-        String [] keys=patternMap.keySet().toArray(new String[patternMap.size()]);
+    public static void Analysis_model_shadow_all(HashMap<String, String> patternMap) throws IOException {
+        String[] keys = patternMap.keySet().toArray(new String[patternMap.size()]);
         List<List<String>> valuesList = Stream.of(keys).map(str -> Arrays.asList(patternMap.get(str).split("@"))).collect(Collectors.toList());
-        Map<String,String> modelToClass = new HashMap<>();
-        valuesList.forEach(l -> l.forEach(s -> modelToClass.put(s,"")));
-        IntStream.range(0,keys.length)
+        Map<String, String> modelToClass = new HashMap<>();
+        valuesList.forEach(l -> l.forEach(s -> modelToClass.put(s, "")));
+        IntStream.range(0, keys.length)
                 .forEach(i -> valuesList.get(i)
-                        .forEach(str -> modelToClass.put(str,modelToClass.get(str)+"\t"+keys[i])));
-        modelToClass.entrySet().stream().filter(x -> x.getValue().trim().split("\t").length>1).forEach(es -> System.out.println(es.getKey()+"\t"+es.getValue()));
+                        .forEach(str -> modelToClass.put(str, modelToClass.get(str) + "\t" + keys[i])));
+        modelToClass.entrySet().stream().filter(x -> x.getValue().trim().split("\t").length > 1).forEach(es -> System.out.println(es.getKey() + "\t" + es.getValue()));
     }
 
 }
