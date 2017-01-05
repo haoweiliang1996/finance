@@ -16,13 +16,10 @@ import java.util.Map;
 
 import main.Main;
 import tree.Tree;
-import util.*;
 import util.FileWriter;
 
 public class EXP {
     public static HashMap<String, String> patternMap = new HashMap<>();
-    public static HashMap<String, Integer> count2 = new HashMap<String, Integer>(); //统计贷款人所在行业
-    public static HashMap<String, Integer> count3 = new HashMap<String, Integer>();//统计贷款流向行业
     public static HashMap<String, String> sentenceToClassMap = new HashMap<>();
     public static HashMap<String, Vector<String>> pattern_to_deny_pattern = new HashMap<>();
     public static Vector<String> keyList = new Vector<>();
@@ -501,31 +498,6 @@ public class EXP {
         treeCount = new myTreeKount("Data/问题类别模式.txt");
         NoPattern = keyList.get(keyList.size() - 1).trim();
         processCluster("Data/sentence.txt", "Data/prase_out.txt");
-
-        File fileOut = new File("Data/贷款人所在行业.txt");
-        fileOut.createNewFile();
-        OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(fileOut));
-        BufferedWriter bw = new BufferedWriter(osw);
-        bw.write("//贷款人所在行业\n");
-        for (String str : keyList) {
-            if (count2.containsKey(str)) {
-                bw.write(str + "\t" + count2.get(str) + "\n");
-            }
-        }
-        bw.close();
-
-        fileOut = new File("Data/贷款流向行业.txt");
-        fileOut.createNewFile();
-        osw = new OutputStreamWriter(new FileOutputStream(fileOut));
-        bw = new BufferedWriter(osw);
-        bw.write("//贷款流向行业\n");
-        for (String str : keyList) {
-            if (count3.containsKey(str)) {
-                bw.write(str + "\t" + count3.get(str) + "\n");
-            }
-        }
-        bw.close();
-
 
         Analysis.Anylysis_model_compete();
         Analysis.Analysis_model_shadow();
