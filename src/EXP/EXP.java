@@ -8,10 +8,6 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.Map;
 
 import main.Main;
 import tree.Tree;
@@ -272,16 +268,7 @@ public class EXP {
             Tree tree = Main.load_tree();
 
             System.out.println("debug start process");
-            br.lines().parallel()
-                    .filter(str -> !str.isEmpty())
-                    .map(str -> str.split("\\t", -1))
-                    .map(strList -> Stream.of(strList[2].toUpperCase(), strList[3].toUpperCase())
-                            .map(str -> str.trim().replaceAll("\\s+", "，").replaceAll("，，", "，").replaceAll("，，，", "，").trim())
-                            .map(str -> type(str))
-                            .filter(str -> str.length() != 0)
-                            .peek(System.out::println)   //to-do 将统计写成consumer
-                            .collect(Collectors.toList()))
-                    .
+
             while ((line = br.readLine()) != null) {
                 line_count++;
                 if (line_count % 1000 == 0)
