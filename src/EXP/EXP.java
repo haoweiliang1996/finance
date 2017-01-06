@@ -270,14 +270,12 @@ public class EXP {
                 .distinct()
                 .filter(str -> str.length() != 0)
                 .forEach(str -> resultCache.put(str, type(str.toUpperCase())));
-
+        System.out.println("分类处理结束");
         Tree tree = Main.load_tree();
-        Function<String, String> getParentClass = strWithSlashT -> Stream.of(strWithSlashT.split("\t"))
-                .map(strWithPipe -> Stream.of(strWithPipe.split("\\|"))
-                        .map(singleStr -> tree.getAllParentsAndItself(singleStr).toString())
-                        .reduce((a, b) -> a + "|" + b).orElse(""))
-                .reduce((a,b) -> a+ "\t" +b).orElse("");
-        resultCache.keySet().forEach(key -> resultCache.put(key,getParentClass.apply(key)));
+        Function<String, String> getParentClass = strWithPipe -> Stream.of(strWithPipe.split("\\|"))
+                .map(singleStr -> tree.getAllParentsAndItself(singleStr).toString())
+                .reduce((a, b) -> a + "|" + b).orElse("");
+        resultCache.keySet().forEach(key -> resultCache.put(key, getParentClass.apply(resultCache.get(key))));
 
         Function<String, String> getResultByCache = str -> str.length() == 0 ? "" : "\t" + resultCache.get(str);
         BiFunction<String, String, String> compareTwoResult = (first, second) ->
@@ -313,8 +311,8 @@ public class EXP {
             if (matchedPattern.length() == 0)
                 continue;
             matchedPattern += "\t" + key;
-            if (line_count % 10000 == 0)
-                System.out.println("debug " + "matchedPattern " + matchedPattern);
+            //if (line_count % 10000 == 0)
+            //  System.out.println("debug " + "matchedPattern " + matchedPattern);
             sb.append(matchedPattern + "@");
         }
 
