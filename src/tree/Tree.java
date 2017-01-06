@@ -8,12 +8,21 @@ import java.util.Set;
 
 import util.FileReader;
 import util.ListSolver;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class Tree {
 	//树的虚拟根节点，是文件中所有的子树的根
 	public static final TreeNode ROOT = TreeNode.EMPTY;
 	TreeNodePool pool = new TreeNodePool();
-	
+	//新名与旧名之间的映射，在get的时候要查一下
+    private Map<String,String> nameMap = new HashMap<String,String>();
+	private Function<String,String> getNameInTheTree = ourName -> nameMap.get(ourName) == null? ourName:nameMap.get(ourName);
+	public BiFunction<String,String,Object> linkNameToNameInTheTree = (Name,NameInTheTree) -> nameMap.put(Name,NameInTheTree);
+
 	public Tree(String filePath, String charset) {
 		fromFile(filePath, charset);
 	}
@@ -108,6 +117,7 @@ public class Tree {
 	 * @return 数组：[根节点，一级父节点，...，直接父节点]
 	 */
 	public List<TreeNode> getAllParents(String name) {
+		name = getNameInTheTree.apply(name);
 		List<TreeNode> parrents = new ArrayList<TreeNode>();
 		TreeNode node = null;
 		try {
@@ -135,6 +145,7 @@ public class Tree {
 	 * @return 数组：[根节点，一级父节点，...，直接父节点，自己]
 	 */
 	public List<TreeNode> getAllParentsAndItself(String name) {
+		name = getNameInTheTree.apply(name);
 		TreeNode node = null;
 		try {
 			node = pool.getNode(name);
@@ -231,7 +242,7 @@ public class Tree {
 			String name = names.get(i);
 			try {
 				node = pool.getNode(name);
-				if (notDisplayMergingNode) {
+				if (notDisplayMergingNode && !name.equals(newName)) {
 					node.setNotDisplay();
 				}
 			} catch (TreeNodeNotFoundException e) {
