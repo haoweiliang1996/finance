@@ -55,7 +55,7 @@ public class Pick {
         BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(expanFilename), "GBK"));
         br.lines().
                 map(line -> line.split("\t")).
-                forEach(line -> expandMap.put(line[0], Integer.parseInt(line[1])>0 ? Integer.parseInt(line[1])+1:Integer.parseInt(line[1])));
+                forEach(line -> expandMap.put(line[0], Integer.parseInt(line[1]) > 0 ? Integer.parseInt(line[1]) + 1 : Integer.parseInt(line[1])));
         System.out.println(expandMap);
     }
 
@@ -80,9 +80,9 @@ public class Pick {
         if (!pa.find())
             return "";
         //System.out.println("debug: " + line + "\n\t" + pa.group(0));
-        return praseMatchResult(line.substring(pa.start(),pa.start("keySentence"))
+        return praseMatchResult(line.substring(pa.start(), pa.start("keySentence"))
                 , pa.group("keySentence")
-                , line.substring(pa.end("keySentence"),pa.end()));
+                , line.substring(pa.end("keySentence"), pa.end()));
     }
 
     private String type(String line) {
@@ -95,7 +95,7 @@ public class Pick {
                             filter(strings -> strings.length() != 0).
                             findFirst().orElse("")).
                     reduce((a, b) -> a + "\t" + b).orElse("Bug report");
-            resultCache.put(line,result);
+            resultCache.put(line, result);
             return result;
         }
     }
@@ -104,7 +104,7 @@ public class Pick {
         BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(inputFilename), "GBK"));
         FileWriter fw = new FileWriter(outputFilename, "GBK", false, true);
         br.lines().
-                map(x -> "\t"+ x + "\t" + type(x)).
+                map(x -> "\t" + x + "\t" + type(x)).
                 forEach(x -> fw.write(x + "\n"));
         fw.close();
         br.close();

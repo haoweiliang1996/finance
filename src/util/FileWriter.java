@@ -24,11 +24,11 @@ public class FileWriter {
 	 * @param filePath 文件路径
 	 * @param charset 文件编码
 	 * @param append 是否以append形式写入
-	 * @param newFile 是否需要先创建文件
+	 * @param newfile 是否需要先创建文件
 	 * @throws IOException
 	 */
-	public FileWriter(String filePath, String charset, boolean append,boolean newFile) throws IOException{
-		if (newFile)
+	public FileWriter(String filePath, String charset, boolean append,boolean newfile) throws IOException{
+		if (newfile)
 		{
 			 File fileOut = new File(filePath);
         	 fileOut.createNewFile();

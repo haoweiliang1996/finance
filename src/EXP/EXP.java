@@ -19,9 +19,9 @@ import tree.Tree;
 import util.FileWriter;
 
 public class EXP {
-    public static HashMap<String, String> patternMap = new HashMap<>();
+    public static LinkedHashMap<String, String> patternMap = new LinkedHashMap<>();
     public static HashMap<String, String> sentenceToClassMap = new HashMap<>();
-    public static HashMap<String, Vector<String>> pattern_to_deny_pattern = new HashMap<>();
+    public static HashMap<String, List<String>> pattern_to_deny_pattern = new HashMap<>();
     public static Vector<String> keyList = new Vector<>();
     public static String NoPattern = ""; //问题类别模式的最后一行为NoPattern的名字
     public static myTreeKount treeCount;
@@ -126,6 +126,23 @@ public class EXP {
         }
     }
 
+    private static void parseSingleLinePattern(String key, String patterns) {
+        Function<String, String> parseSplitBar = str -> Stream.of(str.split("\\.\\*"))
+                .map(x -> x.contains("|") ? "(" + x + ")" : x)
+                .reduce((a, b) -> a + ".*" + b).orElse("bug report");
+        Vector<String> patternListOfTheKey = new Vector<>();
+        Stream.of(patterns.split("\\s+"))
+                .filter(x -> !x.contains("^"))
+                .map(parseSplitBar)
+                .forEach(patternListOfTheKey::add);
+        BiFunction<String, String, List<String>> parseAbandonPattern = (pattern, denyPatterns) -> pattern_to_deny_pattern.put(parseSplitBar.apply(pattern)
+                , Stream.of(denyPatterns.split(",")).map(parseSplitBar).collect(Collectors.toList()));
+        Stream.of(patterns.split("\\s+")).filter(x -> x.contains("^"))
+                .peek(x -> patternListOfTheKey.add(parseSplitBar.apply(x.substring(0, x.indexOf('^')))))
+                .forEach(x -> parseAbandonPattern.apply(x.substring(0, x.indexOf('^')), x.substring(x.indexOf('^') + 1)));
+        patternMap.put(key, patternListOfTheKey.stream().reduce((a, b) -> a + "@" + b).orElse("empty patterns bug!"));
+    }
+
     /**
      * 载入问题类别模式,建立class(去掉了前面的tab)与模式的对应关系，获得模式与-模式的对应关系
      *
@@ -135,98 +152,17 @@ public class EXP {
     public static void loadPattern(String strFile)
             throws IOException {
         File file = new File(strFile);
-
         if (file.isFile() && file.exists()) {
-            InputStreamReader read = new InputStreamReader(new FileInputStream(
-                    file), "GBK");
-            BufferedReader br = new BufferedReader(read);
-            String line = null;
-            while ((line = br.readLine()) != null) {
-                line = line.trim();
-                if (!line.isEmpty()) {
-                    if (!line.contains("\t")) {
-                        continue;
-                    }
-
-                    int index = line.indexOf("\t");
-                    String key = line.substring(0, index);
-                    String value = line.substring(index + 1).trim();
-                    value = value.toUpperCase();
-                    value = value.replaceAll("\\+", "");
-                    value = value.replaceAll("\\*", ".*");
-
-                    //添加以处理 W1|W2*W3|W4的输入
-                    String[] vauleArray = value.split("\\s+");
-                    //System.out.println("debug"+vauleArray.length);
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 0; i < vauleArray.length; i++) {
-                        //System.out.print("debug"+vauleArray[i]);
-
-                        //《处理要去除的模式的输入
-                        int throwBeginIndex = vauleArray[i].indexOf("^");
-
-                        Vector<String> temp = new Vector<>();
-                        if (throwBeginIndex != -1) {
-                            String[] throwStrList = vauleArray[i].substring(throwBeginIndex + 1).split(",");//to-do
-                            vauleArray[i] = vauleArray[i].substring(0, throwBeginIndex);
-                            for (String str : throwStrList) {
-                                if (!str.contains("|"))
-                                    temp.add(str);
-                                else {
-                                    StringBuilder sbuilder = new StringBuilder();
-                                    String[] strTempList = str.split("\\.\\*");
-                                    for (String strTemp : strTempList) {
-                                        if (strTemp.contains("|"))
-                                            sbuilder.append("(" + strTemp + ")" + ".*");
-                                        else
-                                            sbuilder.append(strTemp + ".*");
-                                    }
-                                    if (sbuilder.length() > 0)
-                                        temp.add(sbuilder.delete(sbuilder.length() - 2, sbuilder.length()).toString());
-                                }
-                            }
-                        }
-                        //处理要去除的模式的输入》
-
-                        //处理模式,给诸如 W1|W2*w3加括号->(W1|W2)*W3
-                        if (vauleArray[i].contains("|")) {
-                            String[] phaseArrary = vauleArray[i].split("\\.\\*");
-                            //System.out.println("debug"+phaseArrary.length);
-                            for (String s : phaseArrary) {
-                                if (s.contains("|"))
-                                    s = "(" + s + ")";
-                                //System.out.println("debug"+s);
-                                sb.append(s + ".*");
-                            }
-                            sb.delete(sb.length() - 2, sb.length());
-                        } else
-                            sb.append(vauleArray[i]);
-
-                        String nowPrasePattern = sb.substring(sb.lastIndexOf("@") + 1);
-                        //System.out.println("debug nowPrasePattern:"+nowPrasePattern);
-                        if (!pattern_to_deny_pattern.containsKey(nowPrasePattern))
-                            pattern_to_deny_pattern.put(nowPrasePattern, temp);
-
-                        if (i != vauleArray.length - 1)
-                            sb.append("@");                     //不同的模式间的间隔符是@
-                    }
-                    if (sb.length() > 0) {
-                        value = sb.toString();
-                        //System.out.println("debug"+value);
-                    }
-                    //添加以处理 W1|W2*W3|W4的输入
-
-                    if (patternMap.containsKey(key))
-                        value = patternMap.get(key) + "@" + value;
-                    patternMap.put(key, value);
-                }
-            }
-            br.close();
-            System.out.println(patternMap);
-            System.out.println("debug " + "pattern_to_deny_pattern " + pattern_to_deny_pattern.toString());
-        } else {
-            System.out.println("找不到指定的文件");
+            BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "GBK"));
+            br.lines()
+                    .map(String::trim)
+                    .filter(line -> !line.isEmpty() && line.contains("\t"))
+                    .map(line -> line.replaceAll("\\+", "").replaceAll("\\*", ".*"))
+                    .forEach(line -> parseSingleLinePattern(line.substring(0, line.indexOf('\t')), line.substring(line.indexOf('\t') + 1)));
         }
+        System.out.println(patternMap);
+        System.out.println(patternMap.size());
+        System.out.println(pattern_to_deny_pattern);
     }
 
     /**
@@ -260,6 +196,7 @@ public class EXP {
 
         List<String> lines = br.lines().collect(Collectors.toList());
         br.close();
+        //System.out.println(lines);
 
         Map<String, String> resultCache = new HashMap<>();
         lines.parallelStream()
@@ -282,10 +219,11 @@ public class EXP {
                 resultCache.get(second).equals("[" + NoPattern + "]") || second.equals("") ? first : second;
         lines.stream()
                 .map(str -> str.split("\t", -1))
+                .peek(x -> System.out.print(x[1] + "\n"))
                 .peek(strList -> fw.write(String.join("\t", Arrays.asList(strList))
-                        + getResultByCache.apply(strList[2]) + getResultByCache.apply(strList[3])))
+                        + getResultByCache.apply(strList[2]) + getResultByCache.apply(strList[3]) + "\n"))
                 .forEach(strList -> fwC.write(String.join("\t", Arrays.asList(strList))
-                        + getResultByCache.apply(compareTwoResult.apply(strList[2], strList[3]))));
+                        + getResultByCache.apply(compareTwoResult.apply(strList[2], strList[3])) + "\n"));
     }
 
     /**
