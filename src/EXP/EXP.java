@@ -134,6 +134,7 @@ public class EXP {
         Stream.of(patterns.split("\\s+"))
                 .filter(x -> !x.contains("^"))
                 .map(parseSplitBar)
+                .peek(x -> pattern_to_deny_pattern.put(x,new ArrayList<>()))
                 .forEach(patternListOfTheKey::add);
         BiFunction<String, String, List<String>> parseAbandonPattern = (pattern, denyPatterns) -> pattern_to_deny_pattern.put(parseSplitBar.apply(pattern)
                 , Stream.of(denyPatterns.split(",")).map(parseSplitBar).collect(Collectors.toList()));
@@ -158,7 +159,7 @@ public class EXP {
                     .map(String::trim)
                     .filter(line -> !line.isEmpty() && line.contains("\t"))
                     .map(line -> line.replaceAll("\\+", "").replaceAll("\\*", ".*"))
-                    .forEach(line -> parseSingleLinePattern(line.substring(0, line.indexOf('\t')), line.substring(line.indexOf('\t') + 1)));
+                    .forEach(line -> parseSingleLinePattern(line.substring(0, line.indexOf('\t')), line.substring(line.indexOf('\t') + 1).trim()));
         }
         System.out.println(patternMap);
         System.out.println(patternMap.size());
@@ -171,7 +172,7 @@ public class EXP {
      * @param inFile  希望处理的输入文件
      *                模式库中的格式：每个模式前面可能有0个或多个Tab键，表示类别之间的层次关系。模式库的BNF定义如下：
      *                <模式库>::=<Line>{<Line>}*
-     *                <Line>::=<Tabs><Class><Tab><Pat1>{<Space><Pat2>}*
+     *                <Line>::=<Tabs><Class><Tabs><Pat1>{<Space><Pat2>}*
      *                |<TABs><Class>
      *                <TABs>::={<Tab>}*
      *                示例：
@@ -196,7 +197,6 @@ public class EXP {
 
         List<String> lines = br.lines().collect(Collectors.toList());
         br.close();
-        //System.out.println(lines);
 
         Map<String, String> resultCache = new HashMap<>();
         lines.parallelStream()
@@ -208,6 +208,8 @@ public class EXP {
                 .filter(str -> str.length() != 0)
                 .forEach(str -> resultCache.put(str, type(str.toUpperCase())));
         System.out.println("分类处理结束");
+        System.out.println(resultCache);
+        System.out.println(lines);
         Tree tree = Main.load_tree();
         Function<String, String> getParentClass = strWithPipe -> Stream.of(strWithPipe.split("\\|"))
                 .map(singleStr -> tree.getAllParentsAndItself(singleStr).toString())
@@ -218,8 +220,9 @@ public class EXP {
         BiFunction<String, String, String> compareTwoResult = (first, second) ->
                 resultCache.get(second).equals("[" + NoPattern + "]") || second.equals("") ? first : second;
         lines.stream()
+                .peek(x -> System.out.print(x + "\n"))
                 .map(str -> str.split("\t", -1))
-                .peek(x -> System.out.print(x[1] + "\n"))
+                .peek(x -> System.out.print(x[3] + "\n"))
                 .peek(strList -> fw.write(String.join("\t", Arrays.asList(strList))
                         + getResultByCache.apply(strList[2]) + getResultByCache.apply(strList[3]) + "\n"))
                 .forEach(strList -> fwC.write(String.join("\t", Arrays.asList(strList))
@@ -233,9 +236,6 @@ public class EXP {
      * @return 匹配到的classs 格式形如：class1|class2|class3
      */
     private static String type(String line) {
-        if (sentenceToClassMap.containsKey(line)) {
-            return sentenceToClassMap.get(line);
-        }
 
         StringBuilder sb = new StringBuilder();
         Iterator<Entry<String, String>> iter = patternMap.entrySet().iterator();
