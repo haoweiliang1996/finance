@@ -82,9 +82,8 @@ public class EXP {
         public myTreeKount(String strFile) throws IOException {
             File file = new File(strFile);
             if (file.isFile() && file.exists()) {
-                InputStreamReader read = new InputStreamReader(new FileInputStream(
-                        file), "GBK");
-                BufferedReader br = new BufferedReader(read);
+                BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(
+                        file), "GBK"));
                 String line = null;
                 while ((line = br.readLine()) != null) {
                     int splitIndex = line.lastIndexOf('\t');
