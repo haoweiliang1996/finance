@@ -4,24 +4,25 @@
 package EXP;
 
 import java.io.*;
+import java.lang.reflect.Array;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.Map;
 
 import main.Main;
 import tree.Tree;
 import util.FileWriter;
 
 public class EXP {
-    public static LinkedHashMap<String, String> patternMap = new LinkedHashMap<>();
-    public static HashMap<String, String> sentenceToClassMap = new HashMap<>();
-    public static HashMap<String, List<String>> pattern_to_deny_pattern = new HashMap<>();
+    public static ConcurrentHashMap<String, String> patternMap = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<String, List<String>> pattern_to_deny_pattern = new ConcurrentHashMap<>();
     public static Vector<String> keyList = new Vector<>();
     public static String NoPattern = ""; //问题类别模式的最后一行为NoPattern的名字
     public static myTreeKount treeCount;
@@ -197,7 +198,7 @@ public class EXP {
         List<String> lines = br.lines().collect(Collectors.toList());
         br.close();
 
-        Map<String, String> resultCache = new HashMap<>();
+        ConcurrentMap<String, String> resultCache = new ConcurrentHashMap<>();
         lines.parallelStream()
                 .filter(str -> !str.isEmpty())
                 .map(str -> str.split("\\t", -1))
@@ -237,9 +238,16 @@ public class EXP {
     private static String type(String line) {
 
         StringBuilder sb = new StringBuilder();
-        Iterator<Entry<String, String>> iter = patternMap.entrySet().iterator();
+        sb.append(
+                patternMap.entrySet().stream().map(x -> new String[]{x.getKey(),isKeyType(x.getValue(),line)})
+                .filter(x -> x[1].length()!=0)
+                .map(x -> x[1] +'\t' +x[0])
+                .reduce((a,b) -> a+'@'+b).orElse("")
+        );
+        //Iterator<Entry<String, String>> iter = patternMap.entrySet().iterator();
 
-        while (iter.hasNext()) {
+
+        /*while (iter.hasNext()) {
             Entry<String, String> entry = iter.next();
             String key = entry.getKey();
             String regex = entry.getValue();
@@ -251,13 +259,14 @@ public class EXP {
             //if (line_count % 10000 == 0)
             //  System.out.println("debug " + "matchedPattern " + matchedPattern);
             sb.append(matchedPattern + "@");
-        }
+        }*/
 
         String type = NoPattern;
         if (sb.length() != 0) {
             //System.out.println("debug typeResult"+sb.substring(0,sb.length()-1));
             //<<处理去除模式
-            String[] typeResult = sb.substring(0, sb.length() - 1).split("@");//去除末尾的‘@’
+            String[] typeResult = sb.toString().split("@");//去除末尾的‘@’
+            //List<String []> temp = Arrays.stream(typeResult).map(x -> x.split("@")).collect(Collectors.toList());
             String[] phaseList = new String[typeResult.length];
             String[] classList = new String[typeResult.length];
             String[] patternList = new String[typeResult.length];
@@ -271,14 +280,12 @@ public class EXP {
             for (String pa : patternList) {//匹配到的模式，由这些模式得到需要删除的模式的集合，若发现匹配到的串符合要删除的模式，则删除这些串
                 if (!pattern_to_deny_pattern.containsKey(pa)) {
                     System.out.println("error+ " + pa + "没有出现在 pattern_to_deny_pattern");
-                    continue;
                 }
-                for (String denyPattern : pattern_to_deny_pattern.get(pa)) {
-                    denyPatternSet.add(denyPattern);
-                }
+                else
+                    pattern_to_deny_pattern.get(pa).forEach(denyPatternSet::add);
             }
 
-            HashSet<String> denyPhaseSet = new HashSet<String>();
+            HashSet<String> denyPhaseSet = new HashSet<>();
             //需要包括且仅仅包括不然不能处理 		外资投资！！！！	投资*苹果*产品-苹果*产品
             for (int i = 0; i < phaseList.length; i++) {//所有匹配到的串
                 boolean flag1 = false;//flag1为true时删除这个匹配到的串
@@ -313,6 +320,7 @@ public class EXP {
                 }
             }
 
+
             HashSet<String> denyClassSet = new HashSet<>();
             for (String denyPhase : denyPhaseSet) {
                 for (int i = 0; i < patternList.length; i++) {
@@ -322,18 +330,14 @@ public class EXP {
                     }
                 }
             }
+            //denyPhaseSet.forEach();
+            List<String> result_split = Arrays.asList(classList);
+            result_split.removeIf(denyClassSet::contains);
 
-            Vector<String> result_split = new Vector<>();
-            for (String cl : classList) {
-                if (!denyClassSet.contains(cl))
-                    result_split.add(cl);
-            }
             //处理去除模式>>
 
             //<<处理有子类的情况下还出现父类的问题
-            LinkedHashSet<String> resSet = new LinkedHashSet<>();
-            for (String str : result_split)
-                resSet.add(str);
+            LinkedHashSet<String> resSet = new LinkedHashSet<>(result_split);
             for (String str : result_split) {
                 final int FLAG_ROOT = -2;
                 for (int id = treeCount.getKeyId(str); id != FLAG_ROOT; id = treeCount.getFatherKeyId(id)) {
@@ -346,12 +350,13 @@ public class EXP {
                     }
                 }
             }
-            sb = new StringBuilder();
-            for (String str : resSet) {
+            //sb = new StringBuilder();
+            /*for (String str : resSet) {
                 sb.append(str + "|");
-            }
-            if (sb.length() > 0)
-                type = sb.substring(0, sb.length() - 1);
+            }*/
+            resSet.stream().reduce((a,b) -> a+ "|" +b).orElse("todo");
+            /*if (sb.length() > 0)
+                type = sb.substring(0, sb.length() - 1);*/
             //处理有子类的情况下还出现父类的问题>>
 
             /**
@@ -383,7 +388,6 @@ public class EXP {
             Analysis.model_shadow_Map.get("!未匹配").add(new String[]{line, type});
         }
 
-        sentenceToClassMap.put(line, type);
         return type;
     }
 

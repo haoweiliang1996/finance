@@ -2,6 +2,8 @@ package EXP;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -16,8 +18,8 @@ import util.FileWriter;
 public class Analysis {
     private static String[] resultList;
     public static Vector<String> resultVes = new Vector<>();
-    public static LinkedHashMap<String, String> model_compete_Map = new LinkedHashMap<>();
-    public static LinkedHashMap<String, LinkedHashSet<String[]>> model_shadow_Map = new LinkedHashMap<String, LinkedHashSet<String[]>>();
+    public static ConcurrentHashMap<String, String> model_compete_Map = new ConcurrentHashMap<>();
+    public static ConcurrentMap<String, LinkedHashSet<String[]>> model_shadow_Map = new ConcurrentHashMap<>();
 
     /**
      * 分析模式竞争
@@ -56,7 +58,7 @@ public class Analysis {
         fw1.close();
     }
 
-    public static void Analysis_model_shadow_all(HashMap<String, String> patternMap) throws IOException {
+    public static void Analysis_model_shadow_all(ConcurrentHashMap<String, String> patternMap) throws IOException {
         String[] keys = patternMap.keySet().toArray(new String[patternMap.size()]);
         List<List<String>> valuesList = Stream.of(keys).map(str -> Arrays.asList(patternMap.get(str).split("@"))).collect(Collectors.toList());
         Map<String, String> modelToClass = new HashMap<>();
