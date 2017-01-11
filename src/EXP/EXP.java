@@ -4,13 +4,13 @@
 package EXP;
 
 import java.io.*;
-import java.lang.reflect.Array;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -134,7 +134,7 @@ public class EXP {
         Stream.of(patterns.split("\\s+"))
                 .filter(x -> !x.contains("^"))
                 .map(parseSplitBar)
-                .peek(x -> pattern_to_deny_pattern.put(x,new ArrayList<>()))
+                .peek(x -> pattern_to_deny_pattern.put(x, new ArrayList<>()))
                 .forEach(patternListOfTheKey::add);
         BiFunction<String, String, List<String>> parseAbandonPattern = (pattern, denyPatterns) -> pattern_to_deny_pattern.put(parseSplitBar.apply(pattern)
                 , Stream.of(denyPatterns.split(",")).map(parseSplitBar).collect(Collectors.toList()));
@@ -239,10 +239,10 @@ public class EXP {
 
         StringBuilder sb = new StringBuilder();
         sb.append(
-                patternMap.entrySet().stream().map(x -> new String[]{x.getKey(),isKeyType(x.getValue(),line)})
-                .filter(x -> x[1].length()!=0)
-                .map(x -> x[1] +'\t' +x[0])
-                .reduce((a,b) -> a+'@'+b).orElse("")
+                patternMap.entrySet().stream().map(x -> new String[]{x.getKey(), isKeyType(x.getValue(), line)})
+                        .filter(x -> x[1].length() != 0)
+                        .map(x -> x[1] + '\t' + x[0])
+                        .reduce((a, b) -> a + '@' + b).orElse("")
         );
         //Iterator<Entry<String, String>> iter = patternMap.entrySet().iterator();
 
@@ -280,14 +280,20 @@ public class EXP {
             for (String pa : patternList) {//匹配到的模式，由这些模式得到需要删除的模式的集合，若发现匹配到的串符合要删除的模式，则删除这些串
                 if (!pattern_to_deny_pattern.containsKey(pa)) {
                     System.out.println("error+ " + pa + "没有出现在 pattern_to_deny_pattern");
-                }
-                else
+                } else
                     pattern_to_deny_pattern.get(pa).forEach(denyPatternSet::add);
             }
 
+            BiPredicate<String, String> allPhasesContain = (pattern, shortSentence) -> Stream.of(pattern.split("\\.\\*"))
+                    .allMatch(phase -> Pattern.compile(phase).matcher(shortSentence).find());
+            BiPredicate<String, String> onlyContainThesePhases = (pattern, shortSentence) -> shortSentence
+                    .replaceAll(pattern.replaceAll("\\.\\*", "|"), "").length() == 0;
             HashSet<String> denyPhaseSet = new HashSet<>();
             //需要包括且仅仅包括不然不能处理 		外资投资！！！！	投资*苹果*产品-苹果*产品
-            for (int i = 0; i < phaseList.length; i++) {//所有匹配到的串
+            Predicate<String> isDenied = phase -> denyPatternSet.stream()
+                    .anyMatch(pattern -> allPhasesContain.and(onlyContainThesePhases).test(pattern, phase));
+            Stream.of(phaseList).filter(isDenied).forEach(denyPatternSet::add);
+            /*for (int i = 0; i < phaseList.length; i++) {//所有匹配到的串
                 boolean flag1 = false;//flag1为true时删除这个匹配到的串
                 for (String s : denyPatternSet) {//由于这些串引入的否定list
                     if (s.contains(".*")) {
@@ -318,7 +324,7 @@ public class EXP {
                 if (flag1) {
                     denyPhaseSet.add(phaseList[i]);
                 }
-            }
+            }*/
 
 
             HashSet<String> denyClassSet = new HashSet<>();
@@ -354,7 +360,7 @@ public class EXP {
             /*for (String str : resSet) {
                 sb.append(str + "|");
             }*/
-            resSet.stream().reduce((a,b) -> a+ "|" +b).orElse("todo");
+            resSet.stream().reduce((a, b) -> a + "|" + b).orElse("todo");
             /*if (sb.length() > 0)
                 type = sb.substring(0, sb.length() - 1);*/
             //处理有子类的情况下还出现父类的问题>>
