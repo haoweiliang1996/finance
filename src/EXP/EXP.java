@@ -284,14 +284,14 @@ public class EXP {
                     pattern_to_deny_pattern.get(pa).forEach(denyPatternSet::add);
             }
 
-            BiPredicate<String, String> allPhasesContain = (pattern, shortSentence) -> Stream.of(pattern.split("\\.\\*"))
+            BiPredicate<String, String> allPhasesContained = (pattern, shortSentence) -> Stream.of(pattern.split("\\.\\*"))
                     .allMatch(phase -> Pattern.compile(phase).matcher(shortSentence).find());
             BiPredicate<String, String> onlyContainThesePhases = (pattern, shortSentence) -> shortSentence
                     .replaceAll(pattern.replaceAll("\\.\\*", "|"), "").length() == 0;
             HashSet<String> denyPhaseSet = new HashSet<>();
             //需要包括且仅仅包括不然不能处理 		外资投资！！！！	投资*苹果*产品-苹果*产品
             Predicate<String> isDenied = phase -> denyPatternSet.stream()
-                    .anyMatch(pattern -> allPhasesContain.and(onlyContainThesePhases).test(pattern, phase));
+                    .anyMatch(pattern -> allPhasesContained.and(onlyContainThesePhases).test(pattern, phase));
             Stream.of(phaseList).filter(isDenied).forEach(denyPatternSet::add);
             /*for (int i = 0; i < phaseList.length; i++) {//所有匹配到的串
                 boolean flag1 = false;//flag1为true时删除这个匹配到的串
