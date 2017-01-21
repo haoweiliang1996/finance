@@ -14,6 +14,7 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import main.Main;
@@ -21,18 +22,18 @@ import tree.Tree;
 import util.FileWriter;
 
 public class EXP {
-    public static ConcurrentHashMap<String, String> patternMap = new ConcurrentHashMap<>();
-    public static ConcurrentHashMap<String, List<String>> pattern_to_deny_pattern = new ConcurrentHashMap<>();
-    public static Vector<String> keyList = new Vector<>();
-    public static String NoPattern = ""; //问题类别模式的最后一行为NoPattern的名字
-    public static myTreeKount treeCount;
-    public static int line_count = 0;
+    private static ConcurrentHashMap<String, String> patternMap = new ConcurrentHashMap<>();
+    private static ConcurrentHashMap<String, List<String>> pattern_to_deny_pattern = new ConcurrentHashMap<>();
+    private static Vector<String> keyList = new Vector<>();
+    private static String NoPattern = ""; //问题类别模式的最后一行为NoPattern的名字
+    private static myTreeKount treeCount;
+    private static int line_count = 0;
 
     //前向树，用来找到class的所有父class 以便统计
-    public static class myTreeKount {
+    private static class myTreeKount {
         private static class flag {
-            public int ROOT = -2; //pre[i]为-2时，节点是树根
-            public int UN_PRASE = -1;
+            private int ROOT = -2; //pre[i]为-2时，节点是树根
+            private int UN_PRASE = -1;
         }
 
         private flag FLAG = new flag();
@@ -80,11 +81,21 @@ public class EXP {
          * @param strFile 问题类别模式的文件名
          * @throws IOException
          */
-        public myTreeKount(String strFile) throws IOException {
-            File file = new File(strFile);
+        private myTreeKount(String strFile) throws IOException {
+            BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(
+                    strFile), "GBK"));
+            List<String> lines = br.lines().collect(Collectors.toList());
+            br.close();
+            lines.stream()
+                    .filter(line -> line.lastIndexOf("\t") == -1)
+                    .forEach(line -> System.out.println("check in myTreecount\t" + line));
+            lines.stream()
+                    .map(line -> line.lastIndexOf('\t') == -1 ? line.trim() : line.substring(0, line.lastIndexOf('\t')).trim())
+                    .peek(keyList::add)
+                    .forEach(key -> key_to_keyid.put(key, keyList.size()));
+           /* File file = new File(strFile);
             if (file.isFile() && file.exists()) {
-                BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(
-                        file), "GBK"));
+
                 String line = null;
                 while ((line = br.readLine()) != null) {
                     int splitIndex = line.lastIndexOf('\t');
@@ -98,27 +109,25 @@ public class EXP {
                 }
             } else
                 System.out.println("info " + "这行的class无效");
+            */
             pre = new int[keyList.size()];
             for (int i = 0; i < pre.length; i++)
                 pre[i] = FLAG.UN_PRASE;//根节点
-            for (int i = 0; i < pre.length; i++)
-                if (pre[i] == FLAG.UN_PRASE) {
-                    buildTree(i, FLAG.ROOT);
-                }
+            IntStream.range(0, pre.length).filter(i -> pre[i] != FLAG.ROOT).forEach(i -> buildTree(i, FLAG.ROOT));
         }
 
-        public int getFatherKeyId(int keyid) {
+        private int getFatherKeyId(int keyid) {
             return pre[keyid];
         }
 
-        public int getKeyId(String key) {
+        private int getKeyId(String key) {
             //System.out.println("debug getKeyId:"+key);
             if (!key_to_keyid.containsKey(key))
                 return FLAG.ROOT;
             return key_to_keyid.get(key);
         }
 
-        public String getKeyById(int id) {
+        private String getKeyById(int id) {
             // System.out.println("debug getKeyById id:"+id);
             if (id >= keyList.size())
                 System.out.println("KeyList下标越界：" + id + " " + keyList.size());
@@ -150,7 +159,7 @@ public class EXP {
      * @param strFile 问题类别模式所在的文件
      * @throws IOException 打不开文件
      */
-    public static void loadPattern(String strFile)
+    private static void loadPattern(String strFile)
             throws IOException {
         File file = new File(strFile);
         if (file.isFile() && file.exists()) {
@@ -187,7 +196,7 @@ public class EXP {
      *                ID《tab》正文《tab》所在行业短句《tab》流向行业短句《tab》所在行业class《tab》流向行业class
      * @throws IOException
      */
-    public static void processCluster(String inFile, String outFile)
+    private static void processCluster(String inFile, String outFile)
             throws IOException {
         FileWriter fw = new FileWriter(outFile, "GBK", false, true);
         FileWriter fwC = new FileWriter(outFile.split("\\.")[0] + "_client.txt", "GBK", false, true);
@@ -244,29 +253,12 @@ public class EXP {
                         .map(x -> x[1] + '\t' + x[0])
                         .reduce((a, b) -> a + '@' + b).orElse("")
         );
-        //Iterator<Entry<String, String>> iter = patternMap.entrySet().iterator();
-
-
-        /*while (iter.hasNext()) {
-            Entry<String, String> entry = iter.next();
-            String key = entry.getKey();
-            String regex = entry.getValue();
-
-            String matchedPattern = isKeyType(regex, line);
-            if (matchedPattern.length() == 0)
-                continue;
-            matchedPattern += "\t" + key;
-            //if (line_count % 10000 == 0)
-            //  System.out.println("debug " + "matchedPattern " + matchedPattern);
-            sb.append(matchedPattern + "@");
-        }*/
-
+        //System.out.println(sb.toString());
         String type = NoPattern;
         if (sb.length() != 0) {
             //System.out.println("debug typeResult"+sb.substring(0,sb.length()-1));
             //<<处理去除模式
             String[] typeResult = sb.toString().split("@");//去除末尾的‘@’
-            //List<String []> temp = Arrays.stream(typeResult).map(x -> x.split("@")).collect(Collectors.toList());
             String[] phaseList = new String[typeResult.length];
             String[] classList = new String[typeResult.length];
             String[] patternList = new String[typeResult.length];
@@ -290,56 +282,17 @@ public class EXP {
                     .replaceAll(pattern.replaceAll("\\.\\*", "|"), "").length() == 0;
             HashSet<String> denyPhaseSet = new HashSet<>();
             //需要包括且仅仅包括不然不能处理 		外资投资！！！！	投资*苹果*产品-苹果*产品
-            Predicate<String> isDenied = phase -> denyPatternSet.stream()
+            Predicate<String> shouldDenied = phase -> denyPatternSet.stream()
                     .anyMatch(pattern -> allPhasesContained.and(onlyContainThesePhases).test(pattern, phase));
-            Stream.of(phaseList).filter(isDenied).forEach(denyPatternSet::add);
-            /*for (int i = 0; i < phaseList.length; i++) {//所有匹配到的串
-                boolean flag1 = false;//flag1为true时删除这个匹配到的串
-                for (String s : denyPatternSet) {//由于这些串引入的否定list
-                    if (s.contains(".*")) {
-                        String[] al = s.split("\\.\\*");
-                        boolean flag = true;
-                        StringBuilder sBuilder = new StringBuilder();
-                        for (String e : al) {
-                            sBuilder.append(e + "|");
-                            Matcher pa = Pattern.compile(e).matcher(phaseList[i]);
-                            if (!pa.find()) {
-                                flag = false;
-                                break;
-                            }
-                        }
-                        if (flag)//包含
-                        {
-                            String temp = phaseList[i];
-                            if (temp.replaceAll(sBuilder.substring(0, sBuilder.length() - 1), "").length() == 0)//仅仅包含
-                                flag1 = true;
-                        }
-                    } else {
-                        Matcher pa = Pattern.compile(s).matcher(phaseList[i]);
-                        if (pa.matches()) {
-                            flag1 = true;
-                        }
-                    }
-                }
-                if (flag1) {
-                    denyPhaseSet.add(phaseList[i]);
-                }
-            }*/
-
-
+            Stream.of(phaseList).filter(shouldDenied).forEach(denyPhaseSet::add);
             HashSet<String> denyClassSet = new HashSet<>();
-            for (String denyPhase : denyPhaseSet) {
-                for (int i = 0; i < patternList.length; i++) {
-                    if (isKeyType(patternList[i], denyPhase).length() != 0)//应该被deny的phase匹配上了某个pattern那么这个pattern对于的class应该被禁止
-                    {
-                        denyClassSet.add(classList[i]);
-                    }
-                }
-            }
-            //denyPhaseSet.forEach();
+            //应该被deny的phase匹配上了某个pattern那么这个pattern对于的class应该被禁止
+            //因为所有phase都已经找到了，其对应的pattern也就都放在了patternList中
+            // ，因此寻找应该被deny的phase所匹配上的pattern时只需遍历pattenList即可，而不用重新匹配整个类别-模式库
+            denyPhaseSet.forEach(denyPhase -> IntStream.range(0, patternList.length)
+                    .filter(i -> isKeyType(patternList[i], denyPhase).length() != 0).forEach(i -> denyClassSet.add(classList[i])));
             List<String> result_split = Arrays.asList(classList);
-            result_split.removeIf(denyClassSet::contains);
-
+            //result_split.removeIf(denyClassSet::contains);
             //处理去除模式>>
 
             //<<处理有子类的情况下还出现父类的问题
@@ -356,13 +309,7 @@ public class EXP {
                     }
                 }
             }
-            //sb = new StringBuilder();
-            /*for (String str : resSet) {
-                sb.append(str + "|");
-            }*/
-            resSet.stream().reduce((a, b) -> a + "|" + b).orElse("todo");
-            /*if (sb.length() > 0)
-                type = sb.substring(0, sb.length() - 1);*/
+            type = resSet.stream().reduce((a, b) -> a + "|" + b).orElse("todo");
             //处理有子类的情况下还出现父类的问题>>
 
             /**
@@ -399,42 +346,25 @@ public class EXP {
 
     /**
      * 将sentence与一个class的模式比较，若匹配到一个模式后立即返回匹配结果
+     * findFirst形式的匹配类别，有可能有些denypattern 没能考虑到
      *
-     * @param regex 某个class的所有模式
+     * @param regexs 某个class的所有模式
      * @param line
      * @return 若均未匹配则return空串，否则返回匹配上regex中的第一个模式时 匹配到这个模式时sentence中的词组合+'\t'+匹配上的模式
      */
-    private static String isKeyType(String regex, String line) {
-        String[] regexs = regex.split("@");
-        for (String s : regexs) {
-            //System.out.println("debug s regexs"+s);
-            StringBuilder sb = new StringBuilder();
-            if (s.contains(".*")) {
-                String[] al = s.split("\\.\\*");
-                boolean flag = true;
-                for (String e : al) {
-                    //System.out.println("debug"+e);
-                    Matcher pa = Pattern.compile(e).matcher(line);
-                    if (!pa.find()) {
-                        flag = false;
-                        break;
-                    } else
-                        sb.append(line.substring(pa.start(), pa.end()));
-                }
-                if (flag) {
-                    //System.out.println("debug"+s);
-                    sb.append("\t" + s);  //匹配到某个的模式用的词组合+'\t'+匹配上的pattern
-                    return sb.toString();
-                }
-            } else {
-                Matcher pa = Pattern.compile(s).matcher(line);
-                if (pa.find()) {
-                    //System.out.println("debug"+s);
-                    return line.substring(pa.start(), pa.end()) + "\t" + s;
-                }
-            }
-        }
-        return "";
+    private static String isKeyType(String regexs, String line) {
+        BiPredicate<String, String> allPhasesContained = (pattern, shortSentence) -> Stream.of(pattern.split("\\.\\*"))
+                .allMatch(phase -> Pattern.compile(phase).matcher(shortSentence).find());
+        String matchedPattern = Arrays.stream(regexs.split("@"))
+                .filter(regex -> allPhasesContained.test(regex, line)).findFirst().orElse("");
+        if (matchedPattern.equals(""))
+            return matchedPattern;
+        String matchedPhase = Stream.of(matchedPattern.split("\\.\\*"))
+                .map(phase -> Pattern.compile(phase).matcher(line))
+                .peek(Matcher::find)
+                .map(matcher -> line.substring(matcher.start(), matcher.end()))
+                .reduce(String::concat).orElse("bug report");
+        return matchedPhase + "\t" + matchedPattern;
     }
 
 
