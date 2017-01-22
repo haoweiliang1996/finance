@@ -138,6 +138,7 @@ public class EXP {
         }
     }
 
+    //to-do about upperCase
     private static void parseSingleLinePattern(String key, String patterns) {
         Function<String, String> parseSplitBar = str -> Stream.of(str.split("\\.\\*"))
                 .map(x -> x.contains("|") ? "(" + x + ")" : x)
@@ -201,8 +202,8 @@ public class EXP {
      */
     private static void processCluster(String inFile, String outFile)
             throws IOException {
-        FileWriter fw = new FileWriter(outFile, "GBK", false, true);
-        FileWriter fwC = new FileWriter(outFile.split("\\.")[0] + "_client.txt", "GBK", false, true);
+        FileWriter fw = new FileWriter(outFile, "utf-8", false, true);
+        FileWriter fwC = new FileWriter(outFile.split("\\.")[0] + "_client.txt", "utf-8", false, true);
         BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(inFile), "GBK"));
 
         System.out.println("debug start process");
@@ -220,8 +221,6 @@ public class EXP {
                 .filter(str -> str.length() != 0)
                 .forEach(str -> resultCache.put(str, type(str.toUpperCase())));
         System.out.println("分类处理结束");
-        System.out.println(resultCache);
-        System.out.println(lines);
         Tree tree = Main.load_tree();
         Function<String, String> getParentClass = strWithPipe -> Stream.of(strWithPipe.split("\\|"))
                 .map(singleStr -> tree.getAllParentsAndItself(singleStr).toString())
@@ -231,6 +230,7 @@ public class EXP {
         Function<String, String> getResultByCache = str -> str.length() == 0 ? "" : "\t" + resultCache.get(str);
         BiFunction<String, String, String> compareTwoResult = (first, second) ->
                 resultCache.get(second).equals("[" + NoPattern + "]") || second.equals("") ? first : second;
+        resultCache.put("", "");
         lines.stream()
                 .peek(x -> System.out.print(x + "\n"))
                 .map(str -> str.split("\t", -1))
@@ -248,7 +248,6 @@ public class EXP {
      * @return 匹配到的classs 格式形如：class1|class2|class3
      */
     private static String type(String line) {
-
         StringBuilder sb = new StringBuilder();
         sb.append(
                 patternMap.entrySet().stream().map(x -> new String[]{x.getKey(), isKeyType(x.getValue(), line)})
@@ -256,10 +255,8 @@ public class EXP {
                         .map(x -> x[1] + '\t' + x[0])
                         .reduce((a, b) -> a + '@' + b).orElse("")
         );
-        //System.out.println(sb.toString());
         String type = NoPattern;
         if (sb.length() != 0) {
-            //System.out.println("debug typeResult"+sb.substring(0,sb.length()-1));
             //<<处理去除模式
             String[] typeResult = sb.toString().split("@");//去除末尾的‘@’
             String[] phaseList = new String[typeResult.length];
@@ -288,6 +285,7 @@ public class EXP {
             Predicate<String> shouldDenied = phase -> denyPatternSet.stream()
                     .anyMatch(pattern -> allPhasesContained.and(onlyContainThesePhases).test(pattern, phase));
             Stream.of(phaseList).filter(shouldDenied).forEach(denyPhaseSet::add);
+
             HashSet<String> denyClassSet = new HashSet<>();
             //应该被deny的phase匹配上了某个pattern那么这个pattern对于的class应该被禁止
             //因为所有phase都已经找到了，其对应的pattern也就都放在了patternList中
@@ -375,7 +373,7 @@ public class EXP {
         loadPattern("Data/问题类别模式.txt");
         treeCount = new myTreeKount("Data/问题类别模式.txt");
         NoPattern = keyList.get(keyList.size() - 1).trim();
-        processCluster("Data/sentence.txt", "Data/parse_out.txt");
+        processCluster("Data/prase_50w.in", "Data/parse_out_50w.txt");
 
         Analysis.Anylysis_model_compete();
         Analysis.Analysis_model_shadow();
