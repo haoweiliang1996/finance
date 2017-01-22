@@ -18,6 +18,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import main.Main;
+import org.jetbrains.annotations.Contract;
 import tree.Tree;
 import util.FileWriter;
 
@@ -90,9 +91,10 @@ public class EXP {
                     .filter(line -> line.lastIndexOf("\t") == -1)
                     .forEach(line -> System.out.println("check in myTreecount\t" + line));
             lines.stream()
-                    .map(line -> line.lastIndexOf('\t') == -1 ? line.trim() : line.substring(0, line.lastIndexOf('\t')).trim())
+                    .map(line -> line.lastIndexOf('\t') == -1 ? line : line.substring(0, line.lastIndexOf('\t')))
                     .peek(keyList::add)
-                    .forEach(key -> key_to_keyid.put(key, keyList.size()));
+                    .map(String::trim)
+                    .forEach(key -> key_to_keyid.put(key, keyList.size() - 1));
            /* File file = new File(strFile);
             if (file.isFile() && file.exists()) {
 
@@ -113,9 +115,10 @@ public class EXP {
             pre = new int[keyList.size()];
             for (int i = 0; i < pre.length; i++)
                 pre[i] = FLAG.UN_PRASE;//根节点
-            IntStream.range(0, pre.length).filter(i -> pre[i] != FLAG.ROOT).forEach(i -> buildTree(i, FLAG.ROOT));
+            IntStream.range(0, pre.length).filter(i -> pre[i] == FLAG.UN_PRASE).forEach(i -> buildTree(i, FLAG.ROOT));
         }
 
+        @Contract(pure = true)
         private int getFatherKeyId(int keyid) {
             return pre[keyid];
         }
@@ -291,8 +294,8 @@ public class EXP {
             // ，因此寻找应该被deny的phase所匹配上的pattern时只需遍历pattenList即可，而不用重新匹配整个类别-模式库
             denyPhaseSet.forEach(denyPhase -> IntStream.range(0, patternList.length)
                     .filter(i -> isKeyType(patternList[i], denyPhase).length() != 0).forEach(i -> denyClassSet.add(classList[i])));
-            List<String> result_split = Arrays.asList(classList);
-            //result_split.removeIf(denyClassSet::contains);
+            List<String> result_split = new ArrayList<>(Arrays.asList(classList));
+            result_split.removeIf(denyClassSet::contains);
             //处理去除模式>>
 
             //<<处理有子类的情况下还出现父类的问题
@@ -372,7 +375,7 @@ public class EXP {
         loadPattern("Data/问题类别模式.txt");
         treeCount = new myTreeKount("Data/问题类别模式.txt");
         NoPattern = keyList.get(keyList.size() - 1).trim();
-        processCluster("Data/sentence.txt", "Data/prase_out.txt");
+        processCluster("Data/sentence.txt", "Data/parse_out.txt");
 
         Analysis.Anylysis_model_compete();
         Analysis.Analysis_model_shadow();
