@@ -359,8 +359,8 @@ public class EXP {
 
 
     public static void main(String[] args) throws Exception {
-        loadPattern("Data/问题类别模式.txt");
-        treeCount = new myTreeKount("Data/问题类别模式.txt");
+        loadPattern("Data/问题类别模式.txt.bak");
+        treeCount = new myTreeKount("Data/问题类别模式.txt.bak");
         NoPattern = keyList.get(keyList.size() - 1).trim();
         processCluster("Data/prase_50w.in", "Data/parse_out_50w.txt");
 
