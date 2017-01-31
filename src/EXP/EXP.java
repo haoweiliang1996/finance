@@ -24,11 +24,12 @@ import util.FileWriter;
 
 public class EXP {
     private static ConcurrentHashMap<String, String> patternMap = new ConcurrentHashMap<>();
-    private static ConcurrentHashMap<String, List<String>> pattern_to_deny_pattern = new ConcurrentHashMap<>();
+    private static Map<String, List<String>> pattern_to_deny_pattern = new ConcurrentHashMap<>();
     private static Vector<String> keyList = new Vector<>();
     private static String NoPattern = ""; //问题类别模式的最后一行为NoPattern的名字
     private static myTreeKount treeCount;
-    private static int line_count = 0;
+    private static Map<String, Pattern> patternCache = new HashMap<>();
+    private static Map<String, String[]> splitPatternCache = new HashMap<>();
 
     //前向树，用来找到class的所有父class 以便统计
     private static class myTreeKount {
@@ -95,23 +96,6 @@ public class EXP {
                     .peek(keyList::add)
                     .map(String::trim)
                     .forEach(key -> key_to_keyid.put(key, keyList.size() - 1));
-           /* File file = new File(strFile);
-            if (file.isFile() && file.exists()) {
-
-                String line = null;
-                while ((line = br.readLine()) != null) {
-                    int splitIndex = line.lastIndexOf('\t');
-                    String key;
-                    if (splitIndex == -1 || !line.trim().contains("\t"))
-                        key = line;
-                    else
-                        key = line.substring(0, splitIndex);
-                    key_to_keyid.put(key.trim(), keyList.size());
-                    keyList.add(key);
-                }
-            } else
-                System.out.println("info " + "这行的class无效");
-            */
             pre = new int[keyList.size()];
             for (int i = 0; i < pre.length; i++)
                 pre[i] = FLAG.UN_PRASE;//根节点
@@ -124,14 +108,12 @@ public class EXP {
         }
 
         private int getKeyId(String key) {
-            //System.out.println("debug getKeyId:"+key);
             if (!key_to_keyid.containsKey(key))
                 return FLAG.ROOT;
             return key_to_keyid.get(key);
         }
 
         private String getKeyById(int id) {
-            // System.out.println("debug getKeyById id:"+id);
             if (id >= keyList.size())
                 System.out.println("KeyList下标越界：" + id + " " + keyList.size());
             return keyList.get(id);
@@ -142,7 +124,8 @@ public class EXP {
     private static void parseSingleLinePattern(String key, String patterns) {
         Function<String, String> parseSplitBar = str -> Stream.of(str.split("\\.\\*"))
                 .map(x -> x.contains("|") ? "(" + x + ")" : x)
-                .reduce((a, b) -> a + ".*" + b).orElse("bug report");
+                .reduce((a, b) -> a + ".*" + b).orElse("bug report")
+                .toUpperCase();
         Vector<String> patternListOfTheKey = new Vector<>();
         Stream.of(patterns.split("\\s+"))
                 .filter(x -> !x.contains("^"))
@@ -212,6 +195,14 @@ public class EXP {
         br.close();
 
         ConcurrentMap<String, String> resultCache = new ConcurrentHashMap<>();
+        patternMap.values().stream()
+                .map(patterns -> patterns.split("@"))
+                .distinct()
+                .flatMap(Stream::of)
+                .peek(regex -> splitPatternCache.put(regex, regex.split("\\.\\*")))
+                .map(patterns -> patterns.split("\\.\\*"))
+                .flatMap(Stream::of)
+                .forEach(regex -> patternCache.put(regex, Pattern.compile(regex)));
         lines.parallelStream()
                 .filter(str -> !str.isEmpty())
                 .map(str -> str.split("\\t", -1))
@@ -232,9 +223,7 @@ public class EXP {
                 resultCache.get(second).equals("[" + NoPattern + "]") || second.equals("") ? first : second;
         resultCache.put("", "");
         lines.stream()
-                .peek(x -> System.out.print(x + "\n"))
                 .map(str -> str.split("\t", -1))
-                .peek(x -> System.out.print(x[3] + "\n"))
                 .peek(strList -> fw.write(String.join("\t", Arrays.asList(strList))
                         + getResultByCache.apply(strList[2]) + getResultByCache.apply(strList[3]) + "\n"))
                 .forEach(strList -> fwC.write(String.join("\t", Arrays.asList(strList))
@@ -354,13 +343,13 @@ public class EXP {
      * @return 若均未匹配则return空串，否则返回匹配上regex中的第一个模式时 匹配到这个模式时sentence中的词组合+'\t'+匹配上的模式
      */
     private static String isKeyType(String regexs, String line) {
-        BiPredicate<String, String> allPhasesContained = (pattern, shortSentence) -> Stream.of(pattern.split("\\.\\*"))
-                .allMatch(phase -> Pattern.compile(phase).matcher(shortSentence).find());
+        BiPredicate<String, String> allPhasesContained = (pattern, shortSentence) -> Stream.of(splitPatternCache.get(pattern))
+                .allMatch(phase -> patternCache.get(phase).matcher(shortSentence).find());
         String matchedPattern = Arrays.stream(regexs.split("@"))
                 .filter(regex -> allPhasesContained.test(regex, line)).findFirst().orElse("");
         if (matchedPattern.equals(""))
             return matchedPattern;
-        String matchedPhase = Stream.of(matchedPattern.split("\\.\\*"))
+        String matchedPhase = Stream.of(splitPatternCache.get(matchedPattern))
                 .map(phase -> Pattern.compile(phase).matcher(line))
                 .peek(Matcher::find)
                 .map(matcher -> line.substring(matcher.start(), matcher.end()))
